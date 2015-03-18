@@ -158,6 +158,7 @@ func (q *queue) save() ([]byte, error) {
 			return nil, err
 		}
 		topicStore[name] = b
+		log.Printf("queue save succ. %s %d", name, len(b))
 	}
 	q.TopicStore = topicStore
 	return json.Marshal(q)
@@ -176,4 +177,5 @@ func (q *queue) recovery() {
 		topics[name] = t
 	}
 	q.topics = topics
+	log.Printf("queue recovery succ. %v", topics)
 }

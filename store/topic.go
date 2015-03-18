@@ -92,6 +92,7 @@ func (t *topic) save() ([]byte, error) {
 			return nil, err
 		}
 		lineStore[name] = b
+		log.Printf("topic save succ. %s %d", name, len(b))
 	}
 	t.LineStore = lineStore
 	return json.Marshal(t)
@@ -110,4 +111,5 @@ func (t *topic) recovery() {
 		lines[name] = l
 	}
 	t.lines = lines
+	log.Printf("topic recovery succ. %v", lines)
 }

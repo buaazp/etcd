@@ -87,7 +87,6 @@ type store struct {
 func New(namespaces ...string) Store {
 	s := newStore(namespaces...)
 	s.clock = clockwork.NewRealClock()
-	s.queue = s.newQueue()
 	return s
 }
 
@@ -102,6 +101,7 @@ func newStore(namespaces ...string) *store {
 	s.WatcherHub = newWatchHub(1000)
 	s.ttlKeyHeap = newTtlKeyHeap()
 	s.readonlySet = types.NewUnsafeSet(append(namespaces, "/")...)
+	s.queue = s.newQueue()
 	return s
 }
 
@@ -674,6 +674,11 @@ func (s *store) Save() ([]byte, error) {
 }
 
 func (s *store) SaveNoCopy() ([]byte, error) {
+	qs, err := s.queue.save()
+	if err != nil {
+		return nil, err
+	}
+	s.QueueStore = qs
 	b, err := json.Marshal(s)
 	if err != nil {
 		return nil, err
@@ -717,7 +722,15 @@ func (s *store) Recovery(state []byte) error {
 	s.ttlKeyHeap = newTtlKeyHeap()
 
 	s.Root.recoverAndclean()
-	s.queue.recovery()
+
+	q := new(queue)
+	err = json.Unmarshal(s.QueueStore, q)
+	if err != nil {
+		return err
+	}
+	q.recovery()
+	s.queue = q
+
 	return nil
 }
 

@@ -104,6 +104,7 @@ func (l *line) save() ([]byte, error) {
 		i++
 	}
 	l.FlightStore = flightStore
+	log.Printf("line save succ. %v", flightStore)
 	return json.Marshal(l)
 }
 
@@ -114,4 +115,5 @@ func (l *line) recovery() {
 		flights.PushBack(msg)
 	}
 	l.flights = flights
+	log.Printf("line recovery succ. %v", l.FlightStore)
 }
