@@ -17,6 +17,7 @@ package store
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"path"
 	"strconv"
 	"strings"
@@ -674,11 +675,6 @@ func (s *store) Save() ([]byte, error) {
 }
 
 func (s *store) SaveNoCopy() ([]byte, error) {
-	qs, err := s.queue.save()
-	if err != nil {
-		return nil, err
-	}
-	s.QueueStore = qs
 	b, err := json.Marshal(s)
 	if err != nil {
 		return nil, err
@@ -713,6 +709,7 @@ func (s *store) Clone() Store {
 func (s *store) Recovery(state []byte) error {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
+	log.Printf("state: %d", len(state))
 	err := json.Unmarshal(state, s)
 
 	if err != nil {
