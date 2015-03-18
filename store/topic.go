@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/json"
 	"log"
 	"time"
 
@@ -8,10 +9,11 @@ import (
 )
 
 type topic struct {
-	Name     string
-	Messages []string
-	lines    map[string]*line
-	parent   *queue
+	Name      string
+	Messages  []string
+	LineStore map[string][]byte
+	lines     map[string]*line
+	parent    *queue
 }
 
 func newTopic(name string) *topic {
@@ -80,4 +82,32 @@ func (t *topic) destroy() {
 	t.lines = nil
 	t.parent = nil
 	t.Messages = nil
+}
+
+func (t *topic) save() ([]byte, error) {
+	lineStore := make(map[string][]byte)
+	for name, l := range t.lines {
+		b, err := l.save()
+		if err != nil {
+			return nil, err
+		}
+		lineStore[name] = b
+	}
+	t.LineStore = lineStore
+	return json.Marshal(t)
+}
+
+func (t *topic) recovery() {
+	lines := make(map[string]*line)
+	for name, b := range t.LineStore {
+		l := new(line)
+		err := json.Unmarshal(b, l)
+		if err != nil {
+			continue
+		}
+		l.recovery()
+		l.parent = t
+		lines[name] = l
+	}
+	t.lines = lines
 }

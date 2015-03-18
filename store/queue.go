@@ -15,6 +15,7 @@
 package store
 
 import (
+	"encoding/json"
 	"log"
 	"strconv"
 	"strings"
@@ -24,8 +25,9 @@ import (
 )
 
 type queue struct {
-	topics map[string]*topic
-	parent *store
+	TopicStore map[string][]byte
+	topics     map[string]*topic
+	parent     *store
 }
 
 func (s *store) newQueue() *queue {
@@ -55,7 +57,7 @@ func (q *queue) add(name string, value string) error {
 	case 3:
 		tname := parts[1]
 		lname := parts[2]
-		topic, ok := q.topics[tname]
+		t, ok := q.topics[tname]
 		if !ok {
 			return etcdErr.NewError(etcdErr.EcodeKeyNotFound, tname, q.parent.CurrentIndex)
 		}
@@ -67,7 +69,7 @@ func (q *queue) add(name string, value string) error {
 				return etcdErr.NewError(etcdErr.EcodeInvalidForm, value, q.parent.CurrentIndex)
 			}
 		}
-		return topic.addLine(lname, recycle)
+		return t.addLine(lname, recycle)
 	}
 	return etcdErr.NewError(etcdErr.EcodeKeyNotFound, name, q.parent.CurrentIndex)
 }
@@ -139,11 +141,39 @@ func (q *queue) remove(name string) error {
 	case 3:
 		tname := parts[1]
 		lname := parts[2]
-		topic, ok := q.topics[tname]
+		t, ok := q.topics[tname]
 		if !ok {
 			return etcdErr.NewError(etcdErr.EcodeKeyNotFound, tname, q.parent.CurrentIndex)
 		}
-		return topic.delLine(lname)
+		return t.delLine(lname)
 	}
 	return etcdErr.NewError(etcdErr.EcodeKeyNotFound, name, q.parent.CurrentIndex)
+}
+
+func (q *queue) save() ([]byte, error) {
+	topicStore := make(map[string][]byte)
+	for name, t := range q.topics {
+		b, err := t.save()
+		if err != nil {
+			return nil, err
+		}
+		topicStore[name] = b
+	}
+	q.TopicStore = topicStore
+	return json.Marshal(q)
+}
+
+func (q *queue) recovery() {
+	topics := make(map[string]*topic)
+	for name, b := range q.TopicStore {
+		t := new(topic)
+		err := json.Unmarshal(b, t)
+		if err != nil {
+			continue
+		}
+		t.recovery()
+		t.parent = q
+		topics[name] = t
+	}
+	q.topics = topics
 }

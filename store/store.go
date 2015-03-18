@@ -75,6 +75,7 @@ type store struct {
 	CurrentIndex   uint64
 	Stats          *Stats
 	CurrentVersion int
+	QueueStore     []byte
 	ttlKeyHeap     *ttlKeyHeap  // need to recovery manually
 	worldLock      sync.RWMutex // stop the world lock
 	clock          clockwork.Clock
@@ -691,6 +692,11 @@ func (s *store) Clone() Store {
 	clonedStore.Stats = s.Stats.clone()
 	clonedStore.CurrentVersion = s.CurrentVersion
 
+	qs, err := s.queue.save()
+	if err == nil {
+		clonedStore.QueueStore = qs
+	}
+
 	s.worldLock.Unlock()
 	return clonedStore
 }
@@ -711,6 +717,7 @@ func (s *store) Recovery(state []byte) error {
 	s.ttlKeyHeap = newTtlKeyHeap()
 
 	s.Root.recoverAndclean()
+	s.queue.recovery()
 	return nil
 }
 

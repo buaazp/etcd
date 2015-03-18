@@ -2,6 +2,7 @@ package store
 
 import (
 	"container/list"
+	"encoding/json"
 	"log"
 	"strconv"
 	"time"
@@ -10,11 +11,12 @@ import (
 )
 
 type line struct {
-	Name    string
-	Recycle time.Duration
-	Head    uint64
-	Flights *list.List
-	parent  *topic
+	Name        string
+	Recycle     time.Duration
+	Head        uint64
+	FlightStore []message
+	flights     *list.List
+	parent      *topic
 }
 
 type message struct {
@@ -26,7 +28,7 @@ func newLine(name string, recycle time.Duration) *line {
 	l := new(line)
 	l.Name = name
 	l.Recycle = recycle
-	l.Flights = list.New()
+	l.flights = list.New()
 	log.Printf("line[%s] created. l.recycle: %v", name, recycle)
 	return l
 }
@@ -35,12 +37,12 @@ func (l *line) pop(now time.Time) (uint64, string, error) {
 	found := false
 	var id uint64
 	if l.Recycle > 0 {
-		m := l.Flights.Front()
+		m := l.flights.Front()
 		if m != nil {
 			msg := m.Value.(*message)
 			if now.After(msg.Exp) {
 				id = msg.ID
-				l.Flights.Remove(m)
+				l.flights.Remove(m)
 				found = true
 				// log.Printf("found in flights: %v", id)
 			}
@@ -64,7 +66,7 @@ func (l *line) pop(now time.Time) (uint64, string, error) {
 		msg := new(message)
 		msg.ID = id
 		msg.Exp = now.Add(l.Recycle)
-		l.Flights.PushBack(msg)
+		l.flights.PushBack(msg)
 	}
 
 	return id, value, nil
@@ -75,10 +77,10 @@ func (l *line) confirm(id uint64) error {
 		return etcdErr.NewError(etcdErr.EcodeRootROnly, l.Name, l.parent.parent.parent.CurrentIndex)
 	}
 
-	for m := l.Flights.Front(); m != nil; m = m.Next() {
+	for m := l.flights.Front(); m != nil; m = m.Next() {
 		msg := m.Value.(*message)
 		if msg.ID == id {
-			l.Flights.Remove(m)
+			l.flights.Remove(m)
 			// log.Printf("confirm in flights: %v", id)
 			return nil
 		}
@@ -90,5 +92,26 @@ func (l *line) confirm(id uint64) error {
 
 func (l *line) destroy() {
 	l.parent = nil
-	l.Flights = nil
+	l.flights = nil
+}
+
+func (l *line) save() ([]byte, error) {
+	flightStore := make([]message, l.flights.Len())
+	i := 0
+	for m := l.flights.Front(); m != nil; m = m.Next() {
+		msg := m.Value.(*message)
+		flightStore[i] = *msg
+		i++
+	}
+	l.FlightStore = flightStore
+	return json.Marshal(l)
+}
+
+func (l *line) recovery() {
+	flights := list.New()
+	for i, _ := range l.FlightStore {
+		msg := &l.FlightStore[i]
+		flights.PushBack(msg)
+	}
+	l.flights = flights
 }
