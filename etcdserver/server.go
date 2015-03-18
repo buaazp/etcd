@@ -537,7 +537,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 		r.Method = "QGET"
 	}
 	switch r.Method {
-	case "POST", "PUT", "DELETE", "QGET", "ADD", "PUSH", "POP", "CONFIRM":
+	case "POST", "PUT", "DELETE", "QGET", "ADD", "PUSH", "POP", "CONFIRM", "REMOVE":
 		data, err := r.Marshal()
 		if err != nil {
 			return Response{}, err
@@ -803,6 +803,8 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		return f(s.store.Pop(r.Path, expr))
 	case "CONFIRM":
 		return f(s.store.Confirm(r.Path))
+	case "REMOVE":
+		return f(s.store.Remove(r.Path))
 	case "POST":
 		return f(s.store.Create(r.Path, r.Dir, r.Val, true, expr))
 	case "PUT":

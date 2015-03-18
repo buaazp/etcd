@@ -87,3 +87,8 @@ func (l *line) confirm(id uint64) error {
 	key := l.Name + "/" + strconv.FormatUint(id, 10)
 	return etcdErr.NewError(etcdErr.EcodeKeyNotFound, key, l.parent.parent.parent.CurrentIndex)
 }
+
+func (l *line) destroy() {
+	l.parent = nil
+	l.Flights = nil
+}

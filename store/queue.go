@@ -15,6 +15,7 @@
 package store
 
 import (
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -115,4 +116,34 @@ func (q *queue) confirm(name string) error {
 		return etcdErr.NewError(etcdErr.EcodeKeyNotFound, tname, q.parent.CurrentIndex)
 	}
 	return t.confirm(lname, id)
+}
+
+func (q *queue) delTopic(name string) error {
+	t, ok := q.topics[name]
+	if !ok {
+		return etcdErr.NewError(etcdErr.EcodeKeyNotFound, name, q.parent.CurrentIndex)
+	}
+
+	t.destroy()
+	delete(q.topics, name)
+	log.Printf("topic[%s] removed.", name)
+	return nil
+}
+
+func (q *queue) remove(name string) error {
+	parts := strings.Split(name, "/")
+
+	switch len(parts) {
+	case 2:
+		return q.delTopic(parts[1])
+	case 3:
+		tname := parts[1]
+		lname := parts[2]
+		topic, ok := q.topics[tname]
+		if !ok {
+			return etcdErr.NewError(etcdErr.EcodeKeyNotFound, tname, q.parent.CurrentIndex)
+		}
+		return topic.delLine(lname)
+	}
+	return etcdErr.NewError(etcdErr.EcodeKeyNotFound, name, q.parent.CurrentIndex)
 }

@@ -54,3 +54,30 @@ func (t *topic) confirm(name string, id uint64) error {
 	}
 	return l.confirm(id)
 }
+
+func (t *topic) delLine(name string) error {
+	l, ok := t.lines[name]
+	if !ok {
+		return etcdErr.NewError(etcdErr.EcodeKeyNotFound, name, t.parent.parent.CurrentIndex)
+	}
+
+	l.destroy()
+	delete(t.lines, name)
+	log.Printf("line[%s] removed.", name)
+	return nil
+}
+
+func (t *topic) delLines() {
+	for name, l := range t.lines {
+		l.destroy()
+		delete(t.lines, name)
+		log.Printf("line[%s] removed.", name)
+	}
+}
+
+func (t *topic) destroy() {
+	t.delLines()
+	t.lines = nil
+	t.parent = nil
+	t.Messages = nil
+}

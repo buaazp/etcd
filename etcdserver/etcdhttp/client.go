@@ -641,22 +641,26 @@ func parseQueueRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Req
 	var method, value string
 	var expr int64
 	if dir {
-		method = "ADD"
-		var ttl *uint64
-		if len(r.FormValue("ttl")) > 0 {
-			i, err := getUint64(r.Form, "ttl")
-			if err != nil {
-				return emptyReq, etcdErr.NewRequestError(
-					etcdErr.EcodeTTLNaN,
-					`invalid value for "ttl"`,
-				)
+		if r.Method == "DELETE" {
+			method = "REMOVE"
+		} else {
+			method = "ADD"
+			var ttl *uint64
+			if len(r.FormValue("ttl")) > 0 {
+				i, err := getUint64(r.Form, "ttl")
+				if err != nil {
+					return emptyReq, etcdErr.NewRequestError(
+						etcdErr.EcodeTTLNaN,
+						`invalid value for "ttl"`,
+					)
+				}
+				ttl = &i
 			}
-			ttl = &i
-		}
 
-		if ttl != nil {
-			recycle := time.Duration(*ttl) * time.Second
-			value = recycle.String()
+			if ttl != nil {
+				recycle := time.Duration(*ttl) * time.Second
+				value = recycle.String()
+			}
 		}
 	} else {
 		if r.Method == "GET" {

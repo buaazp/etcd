@@ -66,6 +66,7 @@ type Store interface {
 	Push(name string, value string) (*Event, error)
 	Pop(name string, now time.Time) (*Event, error)
 	Confirm(name string) (*Event, error)
+	Remove(name string) (*Event, error)
 }
 
 type store struct {
@@ -805,6 +806,30 @@ func (s *store) Confirm(name string) (*Event, error) {
 	name = path.Clean(path.Join("/", name))
 
 	err := s.queue.confirm(name)
+
+	if err != nil {
+		s.Stats.Inc(DeleteFail)
+		return nil, err
+	}
+
+	// update etcd index
+	s.CurrentIndex++
+
+	e := newEvent(Delete, name, s.CurrentIndex, s.CurrentIndex)
+	e.EtcdIndex = s.CurrentIndex
+
+	s.Stats.Inc(DeleteSuccess)
+
+	return e, nil
+}
+
+func (s *store) Remove(name string) (*Event, error) {
+	s.worldLock.RLock()
+	defer s.worldLock.RUnlock()
+
+	name = path.Clean(path.Join("/", name))
+
+	err := s.queue.remove(name)
 
 	if err != nil {
 		s.Stats.Inc(DeleteFail)
