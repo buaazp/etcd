@@ -20,6 +20,7 @@ import (
 	"expvar"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -163,6 +164,57 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type deprecatedMachinesHandler struct {
 	cluster etcdserver.Cluster
+}
+
+type queueHandler struct {
+	sec         *security.Store
+	server      etcdserver.Server
+	clusterInfo etcdserver.ClusterInfo
+	timer       etcdserver.RaftTimer
+	timeout     time.Duration
+}
+
+func (h *queueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "HEAD", "GET", "PUT", "POST", "DELETE") {
+		return
+	}
+
+	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
+
+	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
+	defer cancel()
+
+	rr, err := parseQueueRequest(r, clockwork.NewRealClock())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	// The path must be valid at this point (we've parsed the request successfully).
+	if !hasKeyPrefixAccess(h.sec, r, r.URL.Path[len(keysPrefix):]) {
+		writeNoAuth(w)
+		return
+	}
+
+	resp, err := h.server.Do(ctx, rr)
+	if err != nil {
+		err = trimErrorPrefix(err, etcdserver.StoreKeysPrefix)
+		writeError(w, err)
+		return
+	}
+
+	switch {
+	case resp.Event != nil:
+		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
+			// Should never be reached
+			log.Printf("error writing event: %v", err)
+		}
+	case resp.Watcher != nil:
+		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
+		defer cancel()
+		handleKeyWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
+	default:
+		writeError(w, errors.New("received response with no Event/Watcher!"))
+	}
 }
 
 func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -553,6 +605,76 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	if ttl != nil {
 		expr := time.Duration(*ttl) * time.Second
 		rr.Expiration = clock.Now().Add(expr).UnixNano()
+	}
+
+	return rr, nil
+}
+
+func parseQueueRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Request, error) {
+	emptyReq := etcdserverpb.Request{}
+
+	err := r.ParseForm()
+	if err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidForm,
+			err.Error(),
+		)
+	}
+
+	if !strings.HasPrefix(r.URL.Path, keysPrefix) {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidForm,
+			"incorrect key prefix",
+		)
+	}
+	p := r.URL.Path[len(keysPrefix):]
+
+	var dir bool
+	// TODO(jonboulle): define what parameters dir is/isn't compatible with?
+	if dir, err = getBool(r.Form, "dir"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`invalid value for "dir"`,
+		)
+	}
+
+	var method, value string
+	var expr int64
+	if dir {
+		method = "ADD"
+		var ttl *uint64
+		if len(r.FormValue("ttl")) > 0 {
+			i, err := getUint64(r.Form, "ttl")
+			if err != nil {
+				return emptyReq, etcdErr.NewRequestError(
+					etcdErr.EcodeTTLNaN,
+					`invalid value for "ttl"`,
+				)
+			}
+			ttl = &i
+		}
+
+		if ttl != nil {
+			recycle := time.Duration(*ttl) * time.Second
+			value = recycle.String()
+		}
+	} else {
+		if r.Method == "GET" {
+			method = "POP"
+			expr = clock.Now().UnixNano()
+		} else if r.Method == "DELETE" {
+			method = "CONFIRM"
+		} else {
+			method = "PUSH"
+		}
+		value = r.FormValue("value")
+	}
+
+	rr := etcdserverpb.Request{
+		Method:     method,
+		Path:       p,
+		Val:        value,
+		Expiration: expr,
 	}
 
 	return rr, nil

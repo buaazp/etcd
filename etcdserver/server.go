@@ -537,7 +537,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 		r.Method = "QGET"
 	}
 	switch r.Method {
-	case "POST", "PUT", "DELETE", "QGET":
+	case "POST", "PUT", "DELETE", "QGET", "ADD", "PUSH", "POP", "CONFIRM":
 		data, err := r.Marshal()
 		if err != nil {
 			return Response{}, err
@@ -795,6 +795,14 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	}
 	expr := timeutil.UnixNanoToTime(r.Expiration)
 	switch r.Method {
+	case "ADD":
+		return f(s.store.Add(r.Path, r.Val))
+	case "PUSH":
+		return f(s.store.Push(r.Path, r.Val))
+	case "POP":
+		return f(s.store.Pop(r.Path, expr))
+	case "CONFIRM":
+		return f(s.store.Confirm(r.Path))
 	case "POST":
 		return f(s.store.Create(r.Path, r.Dir, r.Val, true, expr))
 	case "PUT":

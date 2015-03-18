@@ -61,6 +61,11 @@ type Store interface {
 
 	JsonStats() []byte
 	DeleteExpiredKeys(cutoff time.Time)
+
+	Add(name string, value string) (*Event, error)
+	Push(name string, value string) (*Event, error)
+	Pop(name string, now time.Time) (*Event, error)
+	Confirm(name string) (*Event, error)
 }
 
 type store struct {
@@ -73,12 +78,14 @@ type store struct {
 	worldLock      sync.RWMutex // stop the world lock
 	clock          clockwork.Clock
 	readonlySet    types.Set
+	queue          *queue
 }
 
 // The given namespaces will be created as initial directories in the returned store.
 func New(namespaces ...string) Store {
 	s := newStore(namespaces...)
 	s.clock = clockwork.NewRealClock()
+	s.queue = s.newQueue()
 	return s
 }
 
@@ -709,4 +716,108 @@ func (s *store) Recovery(state []byte) error {
 func (s *store) JsonStats() []byte {
 	s.Stats.Watchers = uint64(s.WatcherHub.count)
 	return s.Stats.toJson()
+}
+
+func (s *store) Add(name string, value string) (*Event, error) {
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+
+	name = path.Clean(path.Join("/", name))
+
+	err := s.queue.add(name, value)
+	if err != nil {
+		s.Stats.Inc(CreateFail)
+		return nil, err
+	}
+
+	// update etcd index
+	s.CurrentIndex++
+
+	e := newEvent(Create, name, s.CurrentIndex, s.CurrentIndex)
+	e.EtcdIndex = s.CurrentIndex
+
+	s.Stats.Inc(CreateSuccess)
+
+	return e, nil
+}
+
+func (s *store) Push(name string, value string) (*Event, error) {
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+
+	var err error
+
+	name = path.Clean(path.Join("/", name))
+
+	err = s.queue.push(name, value)
+	if err != nil {
+		s.Stats.Inc(SetFail)
+		return nil, err
+	}
+
+	// update etcd index
+	s.CurrentIndex++
+	e := newEvent(Set, name, s.CurrentIndex, s.CurrentIndex)
+	e.EtcdIndex = s.CurrentIndex
+
+	s.Stats.Inc(SetSuccess)
+
+	return e, nil
+}
+
+func (s *store) Pop(name string, now time.Time) (*Event, error) {
+	s.worldLock.RLock()
+	defer s.worldLock.RUnlock()
+
+	name = path.Clean(path.Join("/", name))
+
+	id, value, err := s.queue.pop(name, now)
+
+	if err != nil {
+		s.Stats.Inc(GetFail)
+		return nil, err
+	}
+
+	if value == "" {
+		return nil, etcdErr.NewError(etcdErr.EcodeKeyNotFound, name, s.CurrentIndex)
+	}
+
+	// update etcd index
+	s.CurrentIndex++
+
+	e := newEvent(Get, name, s.CurrentIndex, s.CurrentIndex)
+	e.EtcdIndex = s.CurrentIndex
+	e.Node.Dir = false
+	e.Node.Key = name + "/" + strconv.FormatUint(id, 10)
+	e.Node.Value = &value
+	e.Node.CreatedIndex = s.CurrentIndex
+	e.Node.ModifiedIndex = s.CurrentIndex
+
+	s.Stats.Inc(GetSuccess)
+
+	return e, nil
+}
+
+func (s *store) Confirm(name string) (*Event, error) {
+	s.worldLock.RLock()
+	defer s.worldLock.RUnlock()
+
+	name = path.Clean(path.Join("/", name))
+
+	err := s.queue.confirm(name)
+
+	if err != nil {
+		s.Stats.Inc(DeleteFail)
+		return nil, err
+	}
+
+	// update etcd index
+	s.CurrentIndex++
+
+	e := newEvent(Delete, name, s.CurrentIndex, s.CurrentIndex)
+	e.EtcdIndex = s.CurrentIndex
+
+	s.Stats.Inc(DeleteSuccess)
+
+	return e, nil
 }
