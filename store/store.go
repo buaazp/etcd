@@ -728,6 +728,7 @@ func (s *store) Recovery(state []byte) error {
 	if err != nil {
 		return err
 	}
+	q.parent = s
 	q.recovery()
 	s.queue = q
 
