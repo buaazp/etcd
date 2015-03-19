@@ -749,8 +749,17 @@ func (s *store) Add(name string, value string) (*Event, error) {
 	// update etcd index
 	s.CurrentIndex++
 
-	e := newEvent(Create, name, s.CurrentIndex, s.CurrentIndex)
+	var ttl int64
+	if value != "" {
+		if recycle, err := time.ParseDuration(value); err == nil {
+			ttl = int64(recycle.Seconds())
+		}
+	}
+
+	e := newEvent(Add, name, s.CurrentIndex, s.CurrentIndex)
 	e.EtcdIndex = s.CurrentIndex
+	e.Node.Dir = true
+	e.Node.TTL = ttl
 
 	s.Stats.Inc(AddSuccess)
 
@@ -773,8 +782,10 @@ func (s *store) Push(name string, value string) (*Event, error) {
 
 	// update etcd index
 	s.CurrentIndex++
-	e := newEvent(Set, name, s.CurrentIndex, s.CurrentIndex)
+	e := newEvent(Push, name, s.CurrentIndex, s.CurrentIndex)
 	e.EtcdIndex = s.CurrentIndex
+	e.Node.Value = &value
+	e.Node.Dir = false
 
 	s.Stats.Inc(PushSuccess)
 
@@ -801,13 +812,11 @@ func (s *store) Pop(name string, now time.Time) (*Event, error) {
 	// update etcd index
 	s.CurrentIndex++
 
-	e := newEvent(Get, name, s.CurrentIndex, s.CurrentIndex)
+	key := name + "/" + strconv.FormatUint(id, 10)
+	e := newEvent(Pop, key, s.CurrentIndex, s.CurrentIndex)
 	e.EtcdIndex = s.CurrentIndex
-	e.Node.Dir = false
-	e.Node.Key = name + "/" + strconv.FormatUint(id, 10)
 	e.Node.Value = &value
-	e.Node.CreatedIndex = s.CurrentIndex
-	e.Node.ModifiedIndex = s.CurrentIndex
+	e.Node.Dir = false
 
 	s.Stats.Inc(PopSuccess)
 
@@ -830,8 +839,13 @@ func (s *store) Confirm(name string) (*Event, error) {
 	// update etcd index
 	s.CurrentIndex++
 
-	e := newEvent(Delete, name, s.CurrentIndex, s.CurrentIndex)
+	e := newEvent(Confirm, name, s.CurrentIndex, s.CurrentIndex)
 	e.EtcdIndex = s.CurrentIndex
+
+	value := confirmedValue
+	prev := newEvent(Confirm, name, s.CurrentIndex, s.CurrentIndex)
+	prev.Node.Value = &value
+	e.PrevNode = prev.Node
 
 	s.Stats.Inc(ConfirmSuccess)
 
@@ -854,8 +868,13 @@ func (s *store) Remove(name string) (*Event, error) {
 	// update etcd index
 	s.CurrentIndex++
 
-	e := newEvent(Delete, name, s.CurrentIndex, s.CurrentIndex)
+	e := newEvent(Remove, name, s.CurrentIndex, s.CurrentIndex)
 	e.EtcdIndex = s.CurrentIndex
+	e.Node.Dir = true
+
+	prev := newEvent(Remove, name, s.CurrentIndex, s.CurrentIndex)
+	prev.Node.Dir = true
+	e.PrevNode = prev.Node
 
 	s.Stats.Inc(RemoveSuccess)
 

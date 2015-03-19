@@ -800,7 +800,7 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	case "PUSH":
 		return f(s.store.Push(r.Path, r.Val))
 	case "POP":
-		return f(s.store.Pop(r.Path, expr))
+		return f(s.store.Pop(r.Path, time.Unix(0, r.Time)))
 	case "CONFIRM":
 		return f(s.store.Confirm(r.Path))
 	case "REMOVE":

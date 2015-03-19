@@ -639,7 +639,7 @@ func parseQueueRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Req
 	}
 
 	var method, value string
-	var expr int64
+	var now int64
 	if dir {
 		if r.Method == "DELETE" {
 			method = "REMOVE"
@@ -665,7 +665,7 @@ func parseQueueRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Req
 	} else {
 		if r.Method == "GET" {
 			method = "POP"
-			expr = clock.Now().UnixNano()
+			now = clock.Now().UnixNano()
 		} else if r.Method == "DELETE" {
 			method = "CONFIRM"
 		} else {
@@ -675,10 +675,10 @@ func parseQueueRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Req
 	}
 
 	rr := etcdserverpb.Request{
-		Method:     method,
-		Path:       p,
-		Val:        value,
-		Expiration: expr,
+		Method: method,
+		Path:   p,
+		Val:    value,
+		Time:   now,
 	}
 
 	return rr, nil

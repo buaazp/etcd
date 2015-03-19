@@ -23,6 +23,11 @@ const (
 	CompareAndSwap   = "compareAndSwap"
 	CompareAndDelete = "compareAndDelete"
 	Expire           = "expire"
+	Add              = "add"
+	Push             = "push"
+	Pop              = "pop"
+	Confirm          = "confirm"
+	Remove           = "remove"
 )
 
 type Event struct {

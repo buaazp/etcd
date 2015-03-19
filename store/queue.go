@@ -24,6 +24,10 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 )
 
+const (
+	confirmedValue string = "confirmed"
+)
+
 type queue struct {
 	TopicStore map[string][]byte
 	topics     map[string]*topic
