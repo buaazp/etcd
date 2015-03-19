@@ -88,6 +88,7 @@ type store struct {
 func New(namespaces ...string) Store {
 	s := newStore(namespaces...)
 	s.clock = clockwork.NewRealClock()
+	log.Printf("store: new store succ.")
 	return s
 }
 
@@ -709,7 +710,6 @@ func (s *store) Clone() Store {
 func (s *store) Recovery(state []byte) error {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()
-	log.Printf("state: %d", len(state))
 	err := json.Unmarshal(state, s)
 
 	if err != nil {
@@ -720,14 +720,11 @@ func (s *store) Recovery(state []byte) error {
 
 	s.Root.recoverAndclean()
 
-	q := new(queue)
-	err = json.Unmarshal(s.QueueStore, q)
+	err = json.Unmarshal(s.QueueStore, s.queue)
 	if err != nil {
 		return err
 	}
-	q.parent = s
-	q.recovery()
-	s.queue = q
+	s.queue.recovery()
 
 	return nil
 }

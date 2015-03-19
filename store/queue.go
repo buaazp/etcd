@@ -128,7 +128,7 @@ func (q *queue) delTopic(name string) error {
 
 	t.destroy()
 	delete(q.topics, name)
-	log.Printf("topic[%s] removed.", name)
+	log.Printf("queue: topic removed. [%s]", name)
 	return nil
 }
 
@@ -158,7 +158,7 @@ func (q *queue) save() ([]byte, error) {
 			return nil, err
 		}
 		topicStore[name] = b
-		log.Printf("queue save succ. %s %d", name, len(b))
+		log.Printf("queue: topic save succ. [%s] %d", name, len(b))
 	}
 	q.TopicStore = topicStore
 	return json.Marshal(q)
@@ -177,5 +177,5 @@ func (q *queue) recovery() {
 		topics[name] = t
 	}
 	q.topics = topics
-	log.Printf("queue recovery succ. %v", topics)
+	log.Printf("queue: queue recovery succ. %v", topics)
 }

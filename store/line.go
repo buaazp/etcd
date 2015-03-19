@@ -29,7 +29,7 @@ func newLine(name string, recycle time.Duration) *line {
 	l.Name = name
 	l.Recycle = recycle
 	l.flights = list.New()
-	log.Printf("line[%s] created. l.recycle: %v", name, recycle)
+	log.Printf("queue: line created. [%s] recycle: %v", name, recycle)
 	return l
 }
 
@@ -44,7 +44,6 @@ func (l *line) pop(now time.Time) (uint64, string, error) {
 				id = msg.ID
 				l.flights.Remove(m)
 				found = true
-				// log.Printf("found in flights: %v", id)
 			}
 		}
 	}
@@ -57,7 +56,6 @@ func (l *line) pop(now time.Time) (uint64, string, error) {
 
 		id = l.Head
 		l.Head++
-		// log.Printf("found in topic: %v", id)
 	}
 
 	value := l.parent.Messages[id]
@@ -81,7 +79,6 @@ func (l *line) confirm(id uint64) error {
 		msg := m.Value.(*message)
 		if msg.ID == id {
 			l.flights.Remove(m)
-			// log.Printf("confirm in flights: %v", id)
 			return nil
 		}
 	}
@@ -104,7 +101,7 @@ func (l *line) save() ([]byte, error) {
 		i++
 	}
 	l.FlightStore = flightStore
-	log.Printf("line save succ. %v", flightStore)
+	log.Printf("queue: flights save succ. [%s] %v", l.Name, len(flightStore))
 	return json.Marshal(l)
 }
 
@@ -115,5 +112,5 @@ func (l *line) recovery() {
 		flights.PushBack(msg)
 	}
 	l.flights = flights
-	log.Printf("line recovery succ. %v", l.FlightStore)
+	log.Printf("queue: line recovery succ. [%s] %v", l.Name, len(l.FlightStore))
 }

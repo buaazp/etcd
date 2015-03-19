@@ -21,7 +21,7 @@ func newTopic(name string) *topic {
 	t.Name = name
 	t.Messages = make([]string, 0)
 	t.lines = make(map[string]*line)
-	log.Printf("topic[%s] created.", name)
+	log.Printf("queue: topic created. [%s] ", name)
 	return t
 }
 
@@ -65,7 +65,7 @@ func (t *topic) delLine(name string) error {
 
 	l.destroy()
 	delete(t.lines, name)
-	log.Printf("line[%s] removed.", name)
+	log.Printf("queue: line removed. [%s]", name)
 	return nil
 }
 
@@ -73,7 +73,7 @@ func (t *topic) delLines() {
 	for name, l := range t.lines {
 		l.destroy()
 		delete(t.lines, name)
-		log.Printf("line[%s] removed.", name)
+		log.Printf("queue: line removed. [%s]", name)
 	}
 }
 
@@ -92,7 +92,7 @@ func (t *topic) save() ([]byte, error) {
 			return nil, err
 		}
 		lineStore[name] = b
-		log.Printf("topic save succ. %s %d", name, len(b))
+		log.Printf("queue: line save succ. [%s] %d", name, len(b))
 	}
 	t.LineStore = lineStore
 	return json.Marshal(t)
@@ -111,5 +111,5 @@ func (t *topic) recovery() {
 		lines[name] = l
 	}
 	t.lines = lines
-	log.Printf("topic recovery succ. %v", lines)
+	log.Printf("queue: topic recovery succ. [%s] %v", t.Name, lines)
 }
