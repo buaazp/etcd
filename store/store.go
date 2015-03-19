@@ -742,7 +742,7 @@ func (s *store) Add(name string, value string) (*Event, error) {
 
 	err := s.queue.add(name, value)
 	if err != nil {
-		s.Stats.Inc(CreateFail)
+		s.Stats.Inc(AddFail)
 		return nil, err
 	}
 
@@ -752,7 +752,7 @@ func (s *store) Add(name string, value string) (*Event, error) {
 	e := newEvent(Create, name, s.CurrentIndex, s.CurrentIndex)
 	e.EtcdIndex = s.CurrentIndex
 
-	s.Stats.Inc(CreateSuccess)
+	s.Stats.Inc(AddSuccess)
 
 	return e, nil
 }
@@ -767,7 +767,7 @@ func (s *store) Push(name string, value string) (*Event, error) {
 
 	err = s.queue.push(name, value)
 	if err != nil {
-		s.Stats.Inc(SetFail)
+		s.Stats.Inc(PushFail)
 		return nil, err
 	}
 
@@ -776,7 +776,7 @@ func (s *store) Push(name string, value string) (*Event, error) {
 	e := newEvent(Set, name, s.CurrentIndex, s.CurrentIndex)
 	e.EtcdIndex = s.CurrentIndex
 
-	s.Stats.Inc(SetSuccess)
+	s.Stats.Inc(PushSuccess)
 
 	return e, nil
 }
@@ -790,7 +790,7 @@ func (s *store) Pop(name string, now time.Time) (*Event, error) {
 	id, value, err := s.queue.pop(name, now)
 
 	if err != nil {
-		s.Stats.Inc(GetFail)
+		s.Stats.Inc(PopFail)
 		return nil, err
 	}
 
@@ -809,7 +809,7 @@ func (s *store) Pop(name string, now time.Time) (*Event, error) {
 	e.Node.CreatedIndex = s.CurrentIndex
 	e.Node.ModifiedIndex = s.CurrentIndex
 
-	s.Stats.Inc(GetSuccess)
+	s.Stats.Inc(PopSuccess)
 
 	return e, nil
 }
@@ -823,7 +823,7 @@ func (s *store) Confirm(name string) (*Event, error) {
 	err := s.queue.confirm(name)
 
 	if err != nil {
-		s.Stats.Inc(DeleteFail)
+		s.Stats.Inc(ConfirmFail)
 		return nil, err
 	}
 
@@ -833,7 +833,7 @@ func (s *store) Confirm(name string) (*Event, error) {
 	e := newEvent(Delete, name, s.CurrentIndex, s.CurrentIndex)
 	e.EtcdIndex = s.CurrentIndex
 
-	s.Stats.Inc(DeleteSuccess)
+	s.Stats.Inc(ConfirmSuccess)
 
 	return e, nil
 }
@@ -847,7 +847,7 @@ func (s *store) Remove(name string) (*Event, error) {
 	err := s.queue.remove(name)
 
 	if err != nil {
-		s.Stats.Inc(DeleteFail)
+		s.Stats.Inc(RemoveFail)
 		return nil, err
 	}
 
@@ -857,7 +857,7 @@ func (s *store) Remove(name string) (*Event, error) {
 	e := newEvent(Delete, name, s.CurrentIndex, s.CurrentIndex)
 	e.EtcdIndex = s.CurrentIndex
 
-	s.Stats.Inc(DeleteSuccess)
+	s.Stats.Inc(RemoveSuccess)
 
 	return e, nil
 }

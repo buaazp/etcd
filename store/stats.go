@@ -35,6 +35,16 @@ const (
 	ExpireCount
 	CompareAndDeleteSuccess
 	CompareAndDeleteFail
+	AddSuccess
+	AddFail
+	PushSuccess
+	PushFail
+	PopSuccess
+	PopFail
+	ConfirmSuccess
+	ConfirmFail
+	RemoveSuccess
+	RemoveFail
 )
 
 type Stats struct {
@@ -70,6 +80,17 @@ type Stats struct {
 	ExpireCount uint64 `json:"expireCount"`
 
 	Watchers uint64 `json:"watchers"`
+
+	AddSuccess    uint64 `json:"addSuccess"`
+	AddFail       uint64 `json:"addFail"`
+	PushSuccess   uint64 `json:"pushSuccess"`
+	PushFail      uint64 `json:"pushFail"`
+	PopSuccess    uint64 `json:"popSuccess"`
+	PopFail       uint64 `json:"popFail"`
+	ConfirmSucces uint64 `json:"confirmSucces"`
+	ConfirmFail   uint64 `json:"confirmFail"`
+	RemoveSucces  uint64 `json:"removeSucces"`
+	RemoveFail    uint64 `json:"removeFail"`
 }
 
 func newStats() *Stats {
@@ -135,5 +156,25 @@ func (s *Stats) Inc(field int) {
 		atomic.AddUint64(&s.CompareAndDeleteFail, 1)
 	case ExpireCount:
 		atomic.AddUint64(&s.ExpireCount, 1)
+	case AddSuccess:
+		atomic.AddUint64(&s.AddSuccess, 1)
+	case AddFail:
+		atomic.AddUint64(&s.AddFail, 1)
+	case PushSuccess:
+		atomic.AddUint64(&s.PushSuccess, 1)
+	case PushFail:
+		atomic.AddUint64(&s.PushFail, 1)
+	case PopSuccess:
+		atomic.AddUint64(&s.PopSuccess, 1)
+	case PopFail:
+		atomic.AddUint64(&s.PopFail, 1)
+	case ConfirmSuccess:
+		atomic.AddUint64(&s.ConfirmSucces, 1)
+	case ConfirmFail:
+		atomic.AddUint64(&s.ConfirmFail, 1)
+	case RemoveSuccess:
+		atomic.AddUint64(&s.RemoveSucces, 1)
+	case RemoveFail:
+		atomic.AddUint64(&s.RemoveFail, 1)
 	}
 }
