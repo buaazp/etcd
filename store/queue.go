@@ -183,3 +183,9 @@ func (q *queue) recovery() {
 	q.topics = topics
 	log.Printf("queue: queue recovery succ. %v", topics)
 }
+
+func (q *queue) clean() {
+	for _, t := range q.topics {
+		t.clean()
+	}
+}

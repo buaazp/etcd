@@ -2,15 +2,23 @@ package store
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
 )
 
+const (
+	MaxUint uint64 = ^uint64(0)
+	MinUint uint64 = 0
+)
+
 type topic struct {
 	Name      string
-	Messages  []string
+	DB        *memdb
+	Head      uint64
+	Tail      uint64
 	LineStore map[string][]byte
 	lines     map[string]*line
 	parent    *queue
@@ -19,7 +27,7 @@ type topic struct {
 func newTopic(name string) *topic {
 	t := new(topic)
 	t.Name = name
-	t.Messages = make([]string, 0)
+	t.DB = NewMemdb()
 	t.lines = make(map[string]*line)
 	log.Printf("queue: topic created. [%s] ", name)
 	return t
@@ -30,14 +38,19 @@ func (t *topic) addLine(name string, recycle time.Duration) error {
 		return etcdErr.NewError(etcdErr.EcodeNodeExist, name, t.parent.parent.CurrentIndex)
 	}
 
-	l := newLine(name, recycle)
+	l := newLine(name, t.Head, recycle)
 	l.parent = t
 	t.lines[name] = l
 	return nil
 }
 
 func (t *topic) push(value string) error {
-	t.Messages = append(t.Messages, value)
+	key := fmt.Sprintf("%s/%d", t.Name, t.Tail)
+	err := t.DB.Set(key, value)
+	if err != nil {
+		return err
+	}
+	t.Tail++
 	return nil
 }
 
@@ -81,7 +94,7 @@ func (t *topic) destroy() {
 	t.delLines()
 	t.lines = nil
 	t.parent = nil
-	t.Messages = nil
+	t.DB.Close()
 }
 
 func (t *topic) save() ([]byte, error) {
@@ -112,4 +125,34 @@ func (t *topic) recovery() {
 	}
 	t.lines = lines
 	log.Printf("queue: topic recovery succ. [%s] %v", t.Name, lines)
+}
+
+func (t *topic) getHead() uint64 {
+	head := t.Tail
+	for _, l := range t.lines {
+		if l.FlightHead < head {
+			head = l.FlightHead
+		}
+	}
+	return head
+}
+
+func (t *topic) clean() {
+	begin := t.Head
+	defer func() {
+		if begin != t.Head {
+			log.Printf("queue: topic %s cleaned: %d - %d", t.Name, begin, t.Head)
+		}
+	}()
+
+	head := t.getHead()
+	for t.Head < head {
+		key := fmt.Sprintf("%s/%d", t.Name, t.Head)
+		err := t.DB.Del(key)
+		if err != nil {
+			log.Printf("queue: topic db delete %s error: %v", key, err)
+			return
+		}
+		t.Head++
+	}
 }

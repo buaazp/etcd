@@ -68,6 +68,7 @@ type Store interface {
 	Pop(name string, now time.Time) (*Event, error)
 	Confirm(name string) (*Event, error)
 	Remove(name string) (*Event, error)
+	CleanQueue()
 }
 
 type store struct {
@@ -720,11 +721,13 @@ func (s *store) Recovery(state []byte) error {
 
 	s.Root.recoverAndclean()
 
-	err = json.Unmarshal(s.QueueStore, s.queue)
-	if err != nil {
-		return err
+	if s.QueueStore != nil {
+		err = json.Unmarshal(s.QueueStore, s.queue)
+		if err != nil {
+			return err
+		}
+		s.queue.recovery()
 	}
-	s.queue.recovery()
 
 	return nil
 }
@@ -879,4 +882,11 @@ func (s *store) Remove(name string) (*Event, error) {
 	s.Stats.Inc(RemoveSuccess)
 
 	return e, nil
+}
+
+func (s *store) CleanQueue() {
+	s.worldLock.Lock()
+	defer s.worldLock.Unlock()
+
+	s.queue.clean()
 }
