@@ -116,6 +116,16 @@ func (s *Stats) clone() *Stats {
 		CompareAndDeleteFail:    s.CompareAndDeleteFail,
 		ExpireCount:             s.ExpireCount,
 		Watchers:                s.Watchers,
+		AddSuccess:              s.AddSuccess,
+		AddFail:                 s.AddFail,
+		PushSuccess:             s.PushSuccess,
+		PushFail:                s.PushFail,
+		PopSuccess:              s.PopSuccess,
+		PopFail:                 s.PopFail,
+		ConfirmSucces:           s.ConfirmSucces,
+		ConfirmFail:             s.ConfirmFail,
+		RemoveSucces:            s.RemoveSucces,
+		RemoveFail:              s.RemoveFail,
 	}
 }
 
