@@ -51,4 +51,5 @@ func (m *memdb) Del(key string) error {
 }
 
 func (m *memdb) Close() {
+	m.DB = nil
 }

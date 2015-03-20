@@ -123,6 +123,7 @@ func (l *line) confirm(id uint64) error {
 func (l *line) destroy() {
 	l.parent = nil
 	l.flights = nil
+	l.Flighted = nil
 }
 
 func (l *line) save() ([]byte, error) {
