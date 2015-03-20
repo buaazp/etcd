@@ -848,7 +848,6 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		return f(s.store.Get(r.Path, r.Recursive, r.Sorted))
 	case "SYNC":
 		s.store.DeleteExpiredKeys(time.Unix(0, r.Time))
-		s.store.CleanQueue()
 		return Response{}
 	default:
 		// This should never be reached, but just in case:
@@ -911,6 +910,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
+	s.store.CleanQueue()
 	clone := s.store.Clone()
 
 	go func() {
