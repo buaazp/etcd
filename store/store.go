@@ -63,6 +63,7 @@ type Store interface {
 	JsonStats() []byte
 	DeleteExpiredKeys(cutoff time.Time)
 
+	SetDB(dbpath string)
 	Add(name string, value string) (*Event, error)
 	Push(name string, value string) (*Event, error)
 	Pop(name string, now time.Time) (*Event, error)
@@ -735,6 +736,10 @@ func (s *store) Recovery(state []byte) error {
 func (s *store) JsonStats() []byte {
 	s.Stats.Watchers = uint64(s.WatcherHub.count)
 	return s.Stats.toJson()
+}
+
+func (s *store) SetDB(dbpath string) {
+	s.queue.setdb(dbpath)
 }
 
 func (s *store) Add(name string, value string) (*Event, error) {

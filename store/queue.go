@@ -29,6 +29,7 @@ const (
 )
 
 type queue struct {
+	DBPath     string
 	TopicStore map[string][]byte
 	topics     map[string]*topic
 	parent     *store
@@ -41,12 +42,19 @@ func (s *store) newQueue() *queue {
 	return q
 }
 
+func (q *queue) setdb(dbpath string) {
+	q.DBPath = dbpath
+}
+
 func (q *queue) addTopic(name string) error {
 	if _, ok := q.topics[name]; ok {
 		return etcdErr.NewError(etcdErr.EcodeNodeExist, name, q.parent.CurrentIndex)
 	}
 
-	t := newTopic(name)
+	t, err := newTopic(name, q.DBPath)
+	if err != nil {
+		return err
+	}
 	t.parent = q
 	q.topics[name] = t
 	return nil
@@ -174,9 +182,14 @@ func (q *queue) recovery() {
 		t := new(topic)
 		err := json.Unmarshal(b, t)
 		if err != nil {
+			log.Printf("queue: topic unmarshal error. %s %v", name, err)
 			continue
 		}
-		t.recovery()
+		err = t.recovery(q.DBPath)
+		if err != nil {
+			log.Printf("queue: topic recovery error. %s %v", name, err)
+			continue
+		}
 		t.parent = q
 		topics[name] = t
 	}

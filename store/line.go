@@ -67,7 +67,7 @@ func (l *line) pop(now time.Time) (uint64, string, error) {
 	}
 
 	key := fmt.Sprintf("%s/%d", t.Name, id)
-	value, err := l.parent.DB.Get(key)
+	value, err := l.parent.mdb.Get(key)
 	if err != nil {
 		log.Printf("queue: line db get %s error: %s", key, err)
 		return 0, "", etcdErr.NewError(etcdErr.EcodeKeyNotFound, key, t.parent.parent.CurrentIndex)

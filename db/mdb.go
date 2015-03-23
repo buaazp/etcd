@@ -1,4 +1,4 @@
-package store
+package db
 
 import (
 	"errors"
@@ -6,24 +6,20 @@ import (
 	"sync"
 )
 
-const (
-	ErrNotExisted string = "Data Not Existed"
-)
-
-type memdb struct {
+type MDB struct {
 	mu sync.RWMutex
 	DB map[string]string
 }
 
-func NewMemdb() *memdb {
+func NewMDB() *MDB {
 	db := make(map[string]string)
-	ms := new(memdb)
+	ms := new(MDB)
 	ms.DB = db
 
 	return ms
 }
 
-func (m *memdb) Get(key string) (string, error) {
+func (m *MDB) Get(key string) (string, error) {
 	data, ok := m.DB[key]
 	if !ok {
 		return "", errors.New(ErrNotExisted)
@@ -31,7 +27,7 @@ func (m *memdb) Get(key string) (string, error) {
 	return data, nil
 }
 
-func (m *memdb) Set(key string, data string) error {
+func (m *MDB) Set(key string, data string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -39,7 +35,7 @@ func (m *memdb) Set(key string, data string) error {
 	return nil
 }
 
-func (m *memdb) Del(key string) error {
+func (m *MDB) Del(key string) error {
 	_, ok := m.DB[key]
 	if !ok {
 		return errors.New(ErrNotExisted)
@@ -50,6 +46,10 @@ func (m *memdb) Del(key string) error {
 	return nil
 }
 
-func (m *memdb) Close() {
+func (m *MDB) Type() int {
+	return TypeMDB
+}
+
+func (m *MDB) Close() {
 	m.DB = nil
 }

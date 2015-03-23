@@ -220,6 +220,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 
 		remotes = existingCluster.Members()
 		cl.SetID(existingCluster.id)
+		if cfg.DbSave {
+			st.SetDB(cfg.DbDir())
+		}
 		cl.SetStore(st)
 		cfg.Print()
 		id, n, s, w = startNode(cfg, cl, nil)
@@ -250,6 +253,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			if cl, err = newClusterFromURLsMap(cfg.InitialClusterToken, urlsmap); err != nil {
 				return nil, err
 			}
+		}
+		if cfg.DbSave {
+			st.SetDB(cfg.DbDir())
 		}
 		cl.SetStore(st)
 		cfg.PrintWithInitial()

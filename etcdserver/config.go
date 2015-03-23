@@ -33,6 +33,7 @@ type ServerConfig struct {
 	ClientURLs     types.URLs
 	PeerURLs       types.URLs
 	DataDir        string
+	DbSave         bool
 	// DedicatedWALDir config will make the etcd to write the WAL to the WALDir
 	// rather than the dataDir/member/wal.
 	DedicatedWALDir     string
@@ -116,6 +117,14 @@ func (c *ServerConfig) WALDir() string {
 }
 
 func (c *ServerConfig) SnapDir() string { return path.Join(c.MemberDir(), "snap") }
+
+func (c *ServerConfig) DbDir() string {
+	var dbDir string
+	if c.DbSave {
+		dbDir = path.Join(c.MemberDir(), "db")
+	}
+	return dbDir
+}
 
 func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
 
