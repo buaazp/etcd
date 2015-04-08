@@ -55,8 +55,11 @@ func (l *line) pop(now time.Time) (uint64, string, error) {
 	}
 
 	t := l.parent
-	if !found && l.Head >= t.Tail {
-		return 0, "", nil
+	if !found {
+		if l.Head >= t.Tail {
+			return 0, "", nil
+		}
+		id = l.Head
 	}
 
 	key := fmt.Sprintf("%s/%d", t.Name, id)
@@ -72,7 +75,6 @@ func (l *line) pop(now time.Time) (uint64, string, error) {
 
 	if l.Recycle > 0 {
 		if !found {
-			id = l.Head
 			ids := strconv.FormatUint(id, 10)
 			l.Flighted[ids] = true
 		}

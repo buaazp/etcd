@@ -17,6 +17,7 @@ package store
 import (
 	"encoding/json"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -42,8 +43,12 @@ func (s *store) newQueue() *queue {
 	return q
 }
 
-func (q *queue) setdb(dbpath string) {
+func (q *queue) setdb(dbpath string) error {
+	if err := os.MkdirAll(dbpath, 0755); err != nil {
+		return err
+	}
 	q.DBPath = dbpath
+	return nil
 }
 
 func (q *queue) addTopic(name string) error {

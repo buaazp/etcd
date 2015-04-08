@@ -221,7 +221,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		remotes = existingCluster.Members()
 		cl.SetID(existingCluster.id)
 		if cfg.DbSave {
-			st.SetDB(cfg.DbDir())
+			if err := st.SetDB(cfg.DbDir()); err != nil {
+				return nil, fmt.Errorf("cannot set db for queue: %s", err)
+			}
 		}
 		cl.SetStore(st)
 		cfg.Print()
@@ -255,7 +257,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			}
 		}
 		if cfg.DbSave {
-			st.SetDB(cfg.DbDir())
+			if err := st.SetDB(cfg.DbDir()); err != nil {
+				return nil, fmt.Errorf("cannot set db for queue: %s", err)
+			}
 		}
 		cl.SetStore(st)
 		cfg.PrintWithInitial()
@@ -285,7 +289,15 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 				plog.Panicf("recovered store from snapshot error: %v", err)
 			}
 			plog.Infof("recovered store from snapshot at index %d", snapshot.Metadata.Index)
+		} else {
+			_, err := os.Stat(cfg.DbDir())
+			if err == nil || os.IsExist(err) {
+				if err := st.SetDB(cfg.DbDir()); err != nil {
+					return nil, fmt.Errorf("cannot set db for queue: %s", err)
+				}
+			}
 		}
+
 		cfg.Print()
 		if snapshot != nil {
 			plog.Infof("loaded cluster information from store: %s", cl)

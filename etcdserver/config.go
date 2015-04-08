@@ -118,13 +118,7 @@ func (c *ServerConfig) WALDir() string {
 
 func (c *ServerConfig) SnapDir() string { return path.Join(c.MemberDir(), "snap") }
 
-func (c *ServerConfig) DbDir() string {
-	var dbDir string
-	if c.DbSave {
-		dbDir = path.Join(c.MemberDir(), "db")
-	}
-	return dbDir
-}
+func (c *ServerConfig) DbDir() string { return path.Join(c.MemberDir(), "db") }
 
 func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
 

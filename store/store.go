@@ -63,7 +63,7 @@ type Store interface {
 	JsonStats() []byte
 	DeleteExpiredKeys(cutoff time.Time)
 
-	SetDB(dbpath string)
+	SetDB(dbpath string) error
 	Add(name string, value string) (*Event, error)
 	Push(name string, value string) (*Event, error)
 	Pop(name string, now time.Time) (*Event, error)
@@ -727,6 +727,9 @@ func (s *store) Recovery(state []byte) error {
 		if err != nil {
 			return err
 		}
+		if s.queue.DBPath != "" {
+			log.Printf("queue: db dir = %s", s.queue.DBPath)
+		}
 		s.queue.recovery()
 	}
 
@@ -738,8 +741,13 @@ func (s *store) JsonStats() []byte {
 	return s.Stats.toJson()
 }
 
-func (s *store) SetDB(dbpath string) {
-	s.queue.setdb(dbpath)
+func (s *store) SetDB(dbpath string) error {
+	if err := s.queue.setdb(dbpath); err != nil {
+		log.Printf("queue: setdb dbpath %s failed %s", dbpath, err)
+		return err
+	}
+	log.Printf("queue: db dir = %s", dbpath)
+	return nil
 }
 
 func (s *store) Add(name string, value string) (*Event, error) {
