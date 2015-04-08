@@ -55,15 +55,8 @@ func (l *line) pop(now time.Time) (uint64, string, error) {
 	}
 
 	t := l.parent
-	if !found {
-		if l.Head >= t.Tail {
-			return 0, "", nil
-		}
-
-		id = l.Head
-		ids := strconv.FormatUint(id, 10)
-		l.Flighted[ids] = true
-		l.Head++
+	if !found && l.Head >= t.Tail {
+		return 0, "", nil
 	}
 
 	key := fmt.Sprintf("%s/%d", t.Name, id)
@@ -73,7 +66,17 @@ func (l *line) pop(now time.Time) (uint64, string, error) {
 		return 0, "", etcdErr.NewError(etcdErr.EcodeKeyNotFound, key, t.parent.parent.CurrentIndex)
 	}
 
+	if !found {
+		l.Head++
+	}
+
 	if l.Recycle > 0 {
+		if !found {
+			id = l.Head
+			ids := strconv.FormatUint(id, 10)
+			l.Flighted[ids] = true
+		}
+
 		msg := new(message)
 		msg.ID = id
 		msg.Exp = now.Add(l.Recycle)
