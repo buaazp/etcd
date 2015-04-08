@@ -150,7 +150,7 @@ func NewConfig() *config {
 	// member
 	fs.Var(cfg.corsInfo, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 	fs.StringVar(&cfg.dir, "data-dir", "", "Path to the data directory")
-	fs.BoolVar(&cfg.dbSave, "db-save", false, "If save messages to db")
+	fs.BoolVar(&cfg.dbSave, "db-save", false, "Enable save messages to db")
 	fs.StringVar(&cfg.walDir, "wal-dir", "", "Path to the dedicated wal directory")
 	fs.Var(flags.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of URLs to listen on for peer traffic")
 	fs.Var(flags.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")

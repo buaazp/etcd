@@ -31,6 +31,8 @@ member flags:
 		human-readable name for this member.
 	--data-dir '${name}.etcd'
 		path to the data directory.
+	--db-save 'false'
+		enable save messages to db.
 	--wal-dir ''
 		path to the dedicated wal directory.
 	--snapshot-count '10000'
