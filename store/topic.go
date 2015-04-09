@@ -164,8 +164,14 @@ func (t *topic) getHead() uint64 {
 	} else {
 		head = t.Tail
 		for _, l := range t.lines {
-			if l.FlightHead < head {
-				head = l.FlightHead
+			if l.Recycle > 0 {
+				if l.FlightHead < head {
+					head = l.FlightHead
+				}
+			} else {
+				if l.Head < head {
+					head = l.Head
+				}
 			}
 		}
 	}
