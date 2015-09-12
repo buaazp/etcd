@@ -20,7 +20,6 @@ import (
 	"expvar"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -130,7 +129,9 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
-	rr, err := parseKeyRequest(r, clockwork.NewRealClock())
+	// if used as eq, parse key req as queue req
+	// rr, err := parseKeyRequest(r, clockwork.NewRealClock())
+	rr, err := parseQueueRequest(r, clockwork.NewRealClock())
 	if err != nil {
 		writeKeyError(w, err)
 		return
@@ -164,57 +165,6 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type deprecatedMachinesHandler struct {
 	cluster etcdserver.Cluster
-}
-
-type queueHandler struct {
-	sec         *security.Store
-	server      etcdserver.Server
-	clusterInfo etcdserver.ClusterInfo
-	timer       etcdserver.RaftTimer
-	timeout     time.Duration
-}
-
-func (h *queueHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !allowMethod(w, r.Method, "HEAD", "GET", "PUT", "POST", "DELETE") {
-		return
-	}
-
-	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
-
-	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
-	defer cancel()
-
-	rr, err := parseQueueRequest(r, clockwork.NewRealClock())
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	// The path must be valid at this point (we've parsed the request successfully).
-	if !hasKeyPrefixAccess(h.sec, r, r.URL.Path[len(keysPrefix):], rr.Recursive) {
-		writeNoAuth(w)
-		return
-	}
-
-	resp, err := h.server.Do(ctx, rr)
-	if err != nil {
-		err = trimErrorPrefix(err, etcdserver.StoreKeysPrefix)
-		writeError(w, err)
-		return
-	}
-
-	switch {
-	case resp.Event != nil:
-		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
-			// Should never be reached
-			log.Printf("error writing event: %v", err)
-		}
-	case resp.Watcher != nil:
-		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
-		defer cancel()
-		handleKeyWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
-	default:
-		writeError(w, errors.New("received response with no Event/Watcher!"))
-	}
 }
 
 func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
